@@ -54,7 +54,7 @@ module Metasploit
         attr_accessor :increment_length
 
         # @!attribute mask
-        #  If the cracker type is hashcat, If set, the mask to use.  Should consist of the character sets 
+        #  If the cracker type is hashcat, If set, the mask to use.  Should consist of the character sets
         #  pre-defined by hashcat, such as ?d ?s ?l etc
         #
         #   @return [String] The mask to use
@@ -68,6 +68,10 @@ module Metasploit
         #   @return [Integer] An optional maximum length of password to attempt cracking
         attr_accessor :max_length
 
+        # @!attribute optimize
+        #   @return [Boolean] If the Optimize flag should be given to Hashcat
+        attr_accessor :optimize
+
         # @!attribute pot
         #   @return [String] The file path to an alternative John pot file to use
         attr_accessor :pot
@@ -80,35 +84,35 @@ module Metasploit
         #   @return [String] The file path to the wordlist to use
         attr_accessor :wordlist
 
-        validates :config, :'Metasploit::Framework::File_path' => true, if: 'config.present?'
+        validates :config, :'Metasploit::Framework::File_path' => true, if: -> { config.present? }
 
-        validates :cracker, inclusion: {in: %w(john hashcat)} 
+        validates :cracker, inclusion: {in: %w[john hashcat]}
 
-        validates :cracker_path, :'Metasploit::Framework::Executable_path' => true, if: 'cracker_path.present?'
+        validates :cracker_path, :'Metasploit::Framework::Executable_path' => true, if: -> { cracker_path.present? }
 
         validates :fork,
                   numericality: {
                       only_integer:             true,
                       greater_than_or_equal_to: 1
-                  }, if: 'fork.present?'
+                  }, if: -> { fork.present? }
 
-        validates :hash_path, :'Metasploit::Framework::File_path' => true, if: 'hash_path.present?'
+        validates :hash_path, :'Metasploit::Framework::File_path' => true, if: -> { hash_path.present? }
 
-        validates :pot, :'Metasploit::Framework::File_path' => true, if: 'pot.present?'
+        validates :pot, :'Metasploit::Framework::File_path' => true, if: -> { pot.present? }
 
         validates :max_runtime,
                   numericality: {
                       only_integer:             true,
                       greater_than_or_equal_to: 0
-                  }, if: 'max_runtime.present?'
+                  }, if: -> { max_runtime.present? }
 
         validates :max_length,
                   numericality: {
                       only_integer:             true,
                       greater_than_or_equal_to: 0
-                  }, if: 'max_length.present?'
+                  }, if: -> { max_length.present? }
 
-        validates :wordlist, :'Metasploit::Framework::File_path' => true, if: 'wordlist.present?'
+        validates :wordlist, :'Metasploit::Framework::File_path' => true, if: -> { wordlist.present? }
 
         # @param attributes [Hash{Symbol => String,nil}]
         def initialize(attributes={})
@@ -178,6 +182,30 @@ module Metasploit
             '110'
           when 'android-md5'
             '10'
+          when 'hmac-md5'
+            '10200'
+          when 'dynamic_82'
+            '1710'
+          when 'ssha'
+            '111'
+          when 'raw-sha512'
+            '1700'
+          when 'raw-sha1'
+            '100'
+          when 'raw-md5'
+            '0'
+          when 'smd5'
+            '6300'
+          when 'ssha256'
+            '1411'
+          when 'ssha512'
+            '1711'
+          when 'mscash'
+              '1100'
+          when 'mscash2'
+              '2100'
+          when 'Raw-MD5u'
+              '30'
           else
             nil
           end
@@ -339,46 +367,46 @@ module Metasploit
         # @return [Array] An array set up for {::IO.popen} to use
         def john_crack_command
           cmd_string = binary_path
-          cmd = [ cmd_string,  '--session=' + cracker_session_id, '--nolog' ]
+          cmd = [cmd_string,  '--session=' + cracker_session_id, '--nolog']
 
           if config.present?
-            cmd << ( "--config=" + config )
+            cmd << ("--config=" + config)
           else
-            cmd << ( "--config=" + john_config_file )
+            cmd << ("--config=" + john_config_file)
           end
 
           if pot.present?
-            cmd << ( "--pot=" + pot )
+            cmd << ("--pot=" + pot)
           else
-            cmd << ( "--pot=" + john_pot_file)
+            cmd << ("--pot=" + john_pot_file)
           end
 
           if fork.present? && fork > 1
-            cmd << ( "--fork=" + fork.to_s )
+            cmd << ("--fork=" + fork.to_s)
           end
 
           if format.present?
-            cmd << ( "--format=" + format )
+            cmd << ("--format=" + format)
           end
 
           if wordlist.present?
-            cmd << ( "--wordlist=" + wordlist )
+            cmd << ("--wordlist=" + wordlist)
           end
 
           if incremental.present?
-            cmd << ( "--incremental=" + incremental )
+            cmd << ("--incremental=" + incremental)
           end
 
           if rules.present?
-            cmd << ( "--rules=" + rules )
+            cmd << ("--rules=" + rules)
           end
 
           if max_runtime.present?
-            cmd << ( "--max-run-time=" + max_runtime.to_s)
+            cmd << ("--max-run-time=" + max_runtime.to_s)
           end
 
           if max_length.present?
-            cmd << ( "--max-len=" + max_length.to_s)
+            cmd << ("--max-len=" + max_length.to_s)
           end
 
           cmd << hash_path
@@ -391,42 +419,71 @@ module Metasploit
         # @return [Array] An array set up for {::IO.popen} to use
         def hashcat_crack_command
           cmd_string = binary_path
-          cmd = [ cmd_string,  '--session=' + cracker_session_id, '--logfile-disable' ]
+          cmd = [cmd_string,  '--session=' + cracker_session_id, '--logfile-disable']
 
           if pot.present?
-            cmd << ( "--potfile-path=" + pot )
+            cmd << ("--potfile-path=" + pot)
           else
-            cmd << ( "--potfile-path=" + john_pot_file)
+            cmd << ("--potfile-path=" + john_pot_file)
           end
 
           if format.present?
-            cmd << ( "--hash-type=" + jtr_format_to_hashcat_format(format) )
+            cmd << ("--hash-type=" + jtr_format_to_hashcat_format(format))
+          end
+
+          if optimize.present?
+            # https://hashcat.net/wiki/doku.php?id=frequently_asked_questions#what_is_the_maximum_supported_password_length_for_optimized_kernels
+            # Optimized Kernels has a large impact on speed.  Here are some stats from Hashcat 5.1.0:
+
+            # Kali Linux on Dell Precision M3800
+            ## hashcat -b -w 2 -m 0
+            # * Device #1: Quadro K1100M, 500/2002 MB allocatable, 2MCU
+            # Speed.#1.........:   185.9 MH/s (11.15ms) @ Accel:64 Loops:16 Thr:1024 Vec:1
+
+            ## hashcat -b -w 2 -O -m 0
+            # * Device #1: Quadro K1100M, 500/2002 MB allocatable, 2MCU
+            # Speed.#1.........:   463.6 MH/s (8.92ms) @ Accel:64 Loops:32 Thr:1024 Vec:1
+
+            # Windows 10
+            # PS C:\hashcat-5.1.0> .\hashcat64.exe -b -O -w 2 -m 0
+            # * Device #1: GeForce RTX 2070 SUPER, 2048/8192 MB allocatable, 40MCU
+            # Speed.#1.........: 13914.0 MH/s (5.77ms) @ Accel:128 Loops:64 Thr:256 Vec:1
+
+            # PS C:\hashcat-5.1.0> .\hashcat64.exe -b -O -w 2 -m 0
+            # * Device #1: GeForce RTX 2070 SUPER, 2048/8192 MB allocatable, 40MCU
+            # Speed.#1.........: 31545.6 MH/s (10.36ms) @ Accel:256 Loops:128 Thr:256 Vec:1
+
+            # This change should result in 225%-250% speed boost at the sacrifice of some password length, which most likely
+            # wouldn't be tested inside of MSF since most users are using the MSF modules for word list and easy cracks.
+            # Anything of length where this would cut off is most likely being done independently (outside MSF)
+
+            cmd << ("-O")
           end
 
           if incremental.present?
-            cmd << ( "--increment")
+            cmd << ("--increment")
             if increment_length.present?
-              cmd << ( "--increment-min=" + increment_length[0].to_s)
-              cmd << ( "--increment-max=" + increment_length[1].to_s)
+              cmd << ("--increment-min=" + increment_length[0].to_s)
+              cmd << ("--increment-max=" + increment_length[1].to_s)
             else
               # anything more than max 4 on even des took 8+min on an i7.
               # maybe in the future this can be adjusted or made a variable
               # but current time, we'll leave it as this seems like reasonable
               # time expectation for a module to run
-              cmd << ( "--increment-max=4")
+              cmd << ("--increment-max=4")
             end
           end
 
           if rules.present?
-            cmd << ( "--rules-file=" + rules )
+            cmd << ("--rules-file=" + rules)
           end
 
           if attack.present?
-            cmd << ( "--attack-mode=" + attack )
+            cmd << ("--attack-mode=" + attack)
           end
 
           if max_runtime.present?
-            cmd << ( "--runtime=" + max_runtime.to_s )
+            cmd << ("--runtime=" + max_runtime.to_s)
           end
 
           cmd << hash_path
@@ -437,7 +494,7 @@ module Metasploit
 
           # must be last
           if wordlist.present?
-            cmd << ( wordlist )
+            cmd << (wordlist)
           end
           cmd
         end
@@ -453,14 +510,14 @@ module Metasploit
         #
         # @return [String] the path to the default john.conf file
         def john_config_file
-          ::File.join( ::Msf::Config.data_directory, "jtr", "john.conf" )
+          ::File.join(::Msf::Config.data_directory, "jtr", "john.conf")
         end
 
         # This method returns the path to a default john.pot file.
         #
         # @return [String] the path to the default john.pot file
         def john_pot_file
-          ::File.join( ::Msf::Config.config_directory, "john.pot" )
+          ::File.join(::Msf::Config.config_directory, "john.pot")
         end
 
         # This method is a getter for a random Session ID for the cracker.
@@ -480,14 +537,14 @@ module Metasploit
 
           pot_file = pot || john_pot_file
           if cracker=='hashcat'
-            cmd = [cmd_string, "--show", "--potfile-path=#{pot_file}", "--hash-type=#{jtr_format_to_hashcat_format(format)}" ]
+            cmd = [cmd_string, "--show", "--potfile-path=#{pot_file}", "--hash-type=#{jtr_format_to_hashcat_format(format)}"]
           elsif cracker=='john'
-            cmd = [cmd_string, "--show", "--pot=#{pot_file}", "--format=#{format}" ]
+            cmd = [cmd_string, "--show", "--pot=#{pot_file}", "--format=#{format}"]
 
             if config
               cmd << "--config=#{config}"
             else
-              cmd << ( "--config=" + john_config_file )
+              cmd << ("--config=" + john_config_file)
             end
           end
           cmd << hash_path
